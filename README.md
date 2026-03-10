@@ -10,6 +10,13 @@ Solar_inventory_System is a robust Python-based application designed to streamli
 
 - 🐍 Python
 
+## Features
+- Inventory management
+- Sales tracking
+- Automated invoice generation
+- User authentication and role management
+- Dashboard analytics   
+
 
 ## 📦 Key Dependencies
 
