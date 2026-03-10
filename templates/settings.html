@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Company Settings</h2>
+
+<form method="POST">
+    <label>Company Name</label>
+    <input name="company_name" value="{{ data.company_name }}" required>
+
+    <label>GSTIN</label>
+    <input name="gstin" value="{{ data.gstin }}">
+
+    <label>Address</label>
+    <input name="address" value="{{ data.address }}">
+
+    <label>Phone</label>
+    <input name="phone" value="{{ data.phone }}">
+
+    <label>Email</label>
+    <input name="email" value="{{ data.email }}">
+
+    <button type="submit">Save Settings</button>
+</form>
+
+{% endblock %}

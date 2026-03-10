@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title or "Solar Inventory System" }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app">
+
+    <div class="sidebar">
+        <h2>☀ SolarSys</h2>
+
+        <a href="/dashboard">Dashboard</a>
+        <a href="/sales">New Sale</a>
+        <a href="/invoices">Invoices</a>
+
+        {% if role in ['owner', 'admin'] %}
+            <a href="/inventory">Inventory</a>
+        {% endif %}
+
+        {% if role == 'owner' %}
+            <a href="/users">Users</a>
+        {% endif %}
+
+        <hr>
+        <a href="/logout">Logout</a>
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+</div>
+
+</body>
+</html>

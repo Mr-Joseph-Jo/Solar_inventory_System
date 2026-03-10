@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Invoice History</h2>
+
+<table>
+<tr>
+    <th>Invoice</th>
+    <th>Date</th>
+    <th>Sold By</th>
+    <th>GST</th>
+    <th>Total</th>
+    <th></th>
+</tr>
+
+{% for inv in invoices %}
+<tr>
+    <td>{{ inv.invoice_no }}</td>
+    <td>{{ inv.created_at.strftime('%d-%m-%Y') }}</td>
+    <td>{{ inv.sold_by }}</td>
+    <td>{{ "Yes" if inv.gst_applied else "No" }}</td>
+    <td>₹ {{ inv.total_amount }}</td>
+    <td>
+        <a href="/invoices/download/{{ inv.invoice_no }}">Download</a>
+    </td>
+</tr>
+{% endfor %}
+</table>
+
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>New Sale</h2>
+
+<form method="POST">
+    <label>Item</label>
+    <select name="item_id">
+        {% for item in items %}
+            <option value="{{ item.id }}">
+                {{ item.name }} ({{ item.quantity }} in stock)
+            </option>
+        {% endfor %}
+    </select>
+
+    <label>Quantity</label>
+    <input type="number" name="quantity" min="1" required>
+
+    <label>GST</label>
+    <select name="gst">
+        <option value="yes">With GST</option>
+        <option value="no">Without GST</option>
+    </select>
+
+    <button type="submit">Complete Sale</button>
+</form>
+
+{% endblock %}
