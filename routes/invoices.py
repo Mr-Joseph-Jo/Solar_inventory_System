@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, send_file
+from flask import Blueprint, render_template, send_file, flash, redirect, abort
 from flask_login import login_required, current_user
 from db import get_db
 import os
@@ -52,16 +52,17 @@ def download_invoice(invoice_no):
         """, (invoice_no, current_user.id))
     else:
         cur.execute("""
-            SELECT invoice_file FROM sales
-            WHERE invoice_no=%s
+            SELECT invoice_file FROM sales WHERE invoice_no=%s
         """, (invoice_no,))
 
     sale = cur.fetchone()
 
     if not sale or not sale["invoice_file"]:
-        return "Invoice not found"
+        flash("Invoice not found.", "error")
+        return redirect("/invoices")
 
     if not os.path.exists(sale["invoice_file"]):
-        return "File missing"
+        flash("Invoice file is missing from the server.", "error")
+        return redirect("/invoices")
 
     return send_file(sale["invoice_file"], as_attachment=True)

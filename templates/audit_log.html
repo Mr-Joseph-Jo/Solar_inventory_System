@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h2>Audit Log</h2>
+    <span style="font-size:13px;color:var(--text-3)">{{ total }} total entries</span>
+</div>
+
+{# Filter bar #}
+<div class="card" style="margin-bottom:20px;padding:16px 20px;">
+    <form method="GET" action="/audit/" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+            <label>Filter by User</label>
+            <select name="user_id">
+                <option value="">All Users</option>
+                {% for u in users %}
+                    <option value="{{ u.id }}" {{ 'selected' if filter_user == u.id|string }}>
+                        {{ u.name }} ({{ u.username }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+            <label>Filter by Action</label>
+            <input name="action" value="{{ filter_action }}" placeholder="e.g. Login, Sale created">
+        </div>
+        <div style="display:flex;gap:8px;padding-bottom:1px;">
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="/audit/" class="btn btn-secondary btn-sm">Clear</a>
+        </div>
+    </form>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>When</th>
+                <th>User</th>
+                <th>Role</th>
+                <th>Action</th>
+                <th>Details</th>
+                <th>IP Address</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td style="white-space:nowrap;color:var(--text-2);font-size:13px;">
+                    {{ log.created_at.strftime('%d %b %Y') }}
+                    <span style="color:var(--text-3)">
+                        {{ log.created_at.strftime('%H:%M:%S') }}
+                    </span>
+                </td>
+                <td>
+                    <span style="font-weight:500">{{ log.user_name or '—' }}</span>
+                    <span style="color:var(--text-3);font-size:12px;display:block;">
+                        {{ log.username or '' }}
+                    </span>
+                </td>
+                <td>
+                    {% if log.role == 'owner' %}
+                        <span class="badge badge-amber">Owner</span>
+                    {% elif log.role == 'admin' %}
+                        <span class="badge badge-green">Admin</span>
+                    {% elif log.role == 'sales' %}
+                        <span class="badge badge-gray">Sales</span>
+                    {% else %}
+                        <span class="badge badge-gray">{{ log.role or '—' }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.action and 'Login' in log.action %}
+                        <span style="color:var(--green);font-weight:500">{{ log.action }}</span>
+                    {% elif log.action and 'Logout' in log.action %}
+                        <span style="color:var(--text-2)">{{ log.action }}</span>
+                    {% elif log.action and 'Sale' in log.action %}
+                        <span style="color:var(--blue);font-weight:500">{{ log.action }}</span>
+                    {% elif log.action and ('deleted' in log.action.lower() or 'disabled' in log.action.lower()) %}
+                        <span style="color:var(--red);font-weight:500">{{ log.action }}</span>
+                    {% else %}
+                        <span style="font-weight:500">{{ log.action or '—' }}</span>
+                    {% endif %}
+                </td>
+                <td style="color:var(--text-2);font-size:13px;">{{ log.details or '—' }}</td>
+                <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-3);">
+                    {{ log.ip_address or '—' }}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align:center;color:var(--text-3);padding:32px;">
+                    No log entries found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Pagination #}
+{% if total_pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;font-size:13px;color:var(--text-2);">
+    <span>Page {{ page }} of {{ total_pages }}</span>
+    <div style="display:flex;gap:6px;">
+        {% if page > 1 %}
+            <a href="?page={{ page - 1 }}&user_id={{ filter_user }}&action={{ filter_action }}"
+               class="btn btn-secondary btn-sm">← Previous</a>
+        {% endif %}
+        {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}&user_id={{ filter_user }}&action={{ filter_action }}"
+               class="btn btn-secondary btn-sm">Next →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

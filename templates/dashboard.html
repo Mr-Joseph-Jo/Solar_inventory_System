@@ -1,7 +1,66 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>Dashboard</h1>
-<p>Logged in as: <strong>{{ role }}</strong></p>
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <span class="role-badge">☀ {{ role | capitalize }}</span>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card accent">
+        <div class="stat-label">Total Sales</div>
+        <div class="stat-value">{{ stats.total_sales or 0 }}</div>
+        <div class="stat-sub">All time</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Revenue</div>
+        <div class="stat-value">₹{{ "{:,.0f}".format(stats.total_revenue or 0) }}</div>
+        <div class="stat-sub">Incl. GST</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Inventory Items</div>
+        <div class="stat-value">{{ stats.item_count or 0 }}</div>
+        <div class="stat-sub">Active SKUs</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Low Stock</div>
+        <div class="stat-value">{{ stats.low_stock or 0 }}</div>
+        <div class="stat-sub">Items below 5 units</div>
+    </div>
+</div>
+
+{% if recent_sales %}
+<div class="section-title">Recent Sales</div>
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Invoice</th>
+                <th>Date</th>
+                <th>Item</th>
+                <th>GST</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in recent_sales %}
+            <tr>
+                <td><code style="font-family:'DM Mono',monospace;font-size:12px;">{{ s.invoice_no }}</code></td>
+                <td style="color:var(--text-2)">{{ s.created_at.strftime('%d %b %Y') }}</td>
+                <td>{{ s.item_name or '—' }}</td>
+                <td>
+                    {% if s.gst_applied %}
+                        <span class="badge badge-green">GST</span>
+                    {% else %}
+                        <span class="badge badge-gray">No GST</span>
+                    {% endif %}
+                </td>
+                <td style="font-weight:500">₹{{ "{:,.2f}".format(s.total_amount) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 
 {% endblock %}

@@ -4,6 +4,8 @@
 <h2>Company Settings</h2>
 
 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
     <label>Company Name</label>
     <input name="company_name" value="{{ data.company_name }}" required>
 
@@ -19,7 +21,67 @@
     <label>Email</label>
     <input name="email" value="{{ data.email }}">
 
+    <hr>
+    <h3>Bank Details</h3>
+
+    <label>Bank Name</label>
+    <input name="bank_name" value="{{ data.bank_name }}">
+
+    <label>Account Number</label>
+    <input name="account_no" value="{{ data.account_no }}">
+
+    <label>IFSC Code</label>
+    <input name="ifsc" value="{{ data.ifsc }}">
+
+    <label>Branch</label>
+    <input name="branch" value="{{ data.branch }}">
+
+    <label>PIN Code</label>
+    <input name="pin_code" value="{{ data.pin_code }}">
+
     <button type="submit">Save Settings</button>
 </form>
 
 {% endblock %}
+
+    <hr style="margin:28px 0;border:none;border-top:1px solid var(--border);">
+    <h3 style="margin-bottom:16px;">Tax Rates (GST %)</h3>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">
+        These rates appear in the inventory GST dropdown and in the invoice breakdown table,
+        always sorted ascending. Changes apply to new sales immediately.
+    </p>
+
+    {# Current rates #}
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+        {% for tr in tax_rates %}
+        <div style="display:flex;align-items:center;gap:6px;background:var(--surface-2);
+                    border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;">
+            <form method="POST" action="/settings/tax-rates/edit/{{ tr.id }}"
+                  style="display:flex;align-items:center;gap:6px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="number" name="rate" value="{{ tr.rate }}" step="0.01" min="0" max="100"
+                       style="width:70px;padding:4px 8px;font-size:13px;font-weight:500;">
+                <span style="font-size:13px;color:var(--text-2)">%</span>
+                <button type="submit" class="btn btn-secondary btn-sm">✓</button>
+            </form>
+            <form method="POST" action="/settings/tax-rates/delete/{{ tr.id }}"
+                  onsubmit="return confirm('Remove {{ tr.rate }}% tax rate?')"
+                  style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger btn-sm">×</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# Add new rate #}
+    <form method="POST" action="/settings/tax-rates/add"
+          style="display:flex;align-items:flex-end;gap:10px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group" style="margin:0;">
+            <label>Add New Rate (%)</label>
+            <input type="number" name="rate" step="0.01" min="0" max="100"
+                   placeholder="e.g. 12" style="width:140px;">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Rate</button>
+    </form>

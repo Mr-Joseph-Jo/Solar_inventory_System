@@ -1,30 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>Invoice History</h2>
+<div class="page-header">
+    <h2>Invoice History</h2>
+</div>
 
-<table>
-<tr>
-    <th>Invoice</th>
-    <th>Date</th>
-    <th>Sold By</th>
-    <th>GST</th>
-    <th>Total</th>
-    <th></th>
-</tr>
-
-{% for inv in invoices %}
-<tr>
-    <td>{{ inv.invoice_no }}</td>
-    <td>{{ inv.created_at.strftime('%d-%m-%Y') }}</td>
-    <td>{{ inv.sold_by }}</td>
-    <td>{{ "Yes" if inv.gst_applied else "No" }}</td>
-    <td>₹ {{ inv.total_amount }}</td>
-    <td>
-        <a href="/invoices/download/{{ inv.invoice_no }}">Download</a>
-    </td>
-</tr>
-{% endfor %}
-</table>
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Invoice No</th>
+                <th>Date</th>
+                <th>Sold By</th>
+                <th>GST</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td><code style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-2)">{{ inv.invoice_no }}</code></td>
+                <td style="color:var(--text-2)">{{ inv.created_at.strftime('%d %b %Y') }}</td>
+                <td>{{ inv.sold_by }}</td>
+                <td>
+                    {% if inv.gst_applied %}
+                        <span class="badge badge-green">GST</span>
+                    {% else %}
+                        <span class="badge badge-gray">No GST</span>
+                    {% endif %}
+                </td>
+                <td style="font-weight:500">₹{{ "{:,.2f}".format(inv.total_amount) }}</td>
+                <td>
+                    <a href="/invoices/download/{{ inv.invoice_no }}" class="btn btn-ghost btn-sm">
+                        ↓ Download
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align:center;color:var(--text-3);padding:32px;">
+                    No invoices yet. Create a sale to get started.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 {% endblock %}

@@ -1,36 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{{ title or "Solar Inventory System" }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "Solar Inventory" }}</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
 <div class="app">
+    <aside class="sidebar">
+        <a href="/dashboard" class="sidebar-brand">
+            <div class="brand-icon">☀</div>
+            <span class="brand-name">SolarSys</span>
+        </a>
 
-    <div class="sidebar">
-        <h2>☀ SolarSys</h2>
+        <nav>
+            <a href="/dashboard" class="{{ 'active' if request.path == '/dashboard' }}">
+                <span class="nav-icon">▪</span> Dashboard
+            </a>
+            <a href="/sales" class="{{ 'active' if request.path == '/sales' }}">
+                <span class="nav-icon">▪</span> New Sale
+            </a>
+            <a href="/invoices" class="{{ 'active' if request.path.startswith('/invoices') }}">
+                <span class="nav-icon">▪</span> Invoices
+            </a>
 
-        <a href="/dashboard">Dashboard</a>
-        <a href="/sales">New Sale</a>
-        <a href="/invoices">Invoices</a>
+            {% if role in ['owner', 'admin'] %}
+            <div class="sidebar-divider"></div>
+            <a href="/inventory" class="{{ 'active' if request.path == '/inventory' }}">
+                <span class="nav-icon">▪</span> Inventory
+            </a>
+            <a href="/settings" class="{{ 'active' if request.path == '/settings' }}">
+                <span class="nav-icon">▪</span> Settings
+            </a>
+            {% endif %}
 
-        {% if role in ['owner', 'admin'] %}
-            <a href="/inventory">Inventory</a>
-        {% endif %}
+            {% if role == 'owner' %}
+            <a href="/users" class="{{ 'active' if request.path == '/users' }}">
+                <span class="nav-icon">▪</span> Users
+            </a>
+            {% endif %}
 
-        {% if role == 'owner' %}
-            <a href="/users">Users</a>
-        {% endif %}
+            {% if role in ['owner', 'admin'] %}
+            <a href="/audit/" class="{{ 'active' if request.path.startswith('/audit') }}">
+                <span class="nav-icon">▪</span> Audit Log
+            </a>
+            {% endif %}
+        </nav>
 
-        <hr>
-        <a href="/logout">Logout</a>
-    </div>
+        <div class="sidebar-footer">
+            <a href="/logout">
+                <span class="nav-icon">↩</span> Logout
+            </a>
+        </div>
+    </aside>
 
-    <div class="content">
+    <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
-    </div>
-
+    </main>
 </div>
 
 </body>

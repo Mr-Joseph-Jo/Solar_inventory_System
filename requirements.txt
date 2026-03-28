@@ -1,4 +1,11 @@
 flask
 flask-login
+flask-wtf
 mysql-connector-python
 werkzeug
+python-dotenv
+reportlab
+num2words
+gunicorn
+pytest
+pytest-mock

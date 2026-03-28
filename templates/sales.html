@@ -1,28 +1,218 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>New Sale</h2>
+<div class="page-header">
+    <h2>New Sale</h2>
+</div>
 
-<form method="POST">
-    <label>Item</label>
-    <select name="item_id">
-        {% for item in items %}
-            <option value="{{ item.id }}">
-                {{ item.name }} ({{ item.quantity }} in stock)
-            </option>
-        {% endfor %}
-    </select>
+<div class="form-card" style="max-width:820px;">
+    <form method="POST" id="sale-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <label>Quantity</label>
-    <input type="number" name="quantity" min="1" required>
+        <div class="section-title">Items</div>
 
-    <label>GST</label>
-    <select name="gst">
-        <option value="yes">With GST</option>
-        <option value="no">Without GST</option>
-    </select>
+        <div id="items-container">
+            <!-- Item rows injected by JS -->
+        </div>
 
-    <button type="submit">Complete Sale</button>
-</form>
+        <button type="button" class="btn btn-secondary btn-sm" id="add-row-btn"
+                style="margin-bottom:20px;">
+            + Add Another Item
+        </button>
+
+        <!-- Live totals -->
+        <div style="background:var(--surface-2);border:1px solid var(--border);
+                    border-radius:var(--radius);padding:14px 16px;margin-bottom:20px;
+                    display:flex;gap:32px;flex-wrap:wrap;align-items:flex-end;">
+            <div>
+                <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;
+                            letter-spacing:.05em;margin-bottom:2px;">Subtotal</div>
+                <div style="font-size:18px;font-weight:600;" id="live-subtotal">₹0.00</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;
+                            letter-spacing:.05em;margin-bottom:2px;">GST</div>
+                <div style="font-size:18px;font-weight:600;" id="live-gst">₹0.00</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;
+                            letter-spacing:.05em;margin-bottom:2px;">Round Off</div>
+                <div style="font-size:18px;font-weight:600;color:var(--red);"
+                     id="live-discount">₹0.00</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;
+                            letter-spacing:.05em;margin-bottom:2px;">Total</div>
+                <div style="font-size:18px;font-weight:600;color:var(--sun-dark);"
+                     id="live-total">₹0.00</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+                <label style="font-size:13px;font-weight:500;margin:0;">GST</label>
+                <select name="gst" id="gst-toggle" style="width:auto;">
+                    <option value="yes">With GST</option>
+                    <option value="no">Without GST</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-title">Round Off</div>
+        <div class="form-group" style="max-width:220px;">
+            <label>Round Off Amount (₹)
+                <small style="font-weight:400;color:var(--text-3)">— will show as minus on invoice</small>
+            </label>
+            <input type="number" name="discount" id="discount-input"
+                   min="0" step="0.01" value="0" placeholder="0.00">
+        </div>
+
+        <div class="section-title">Buyer Details</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Buyer Name</label>
+                <input name="buyer_name" placeholder="Customer name">
+            </div>
+            <div class="form-group">
+                <label>Buyer Address</label>
+                <input name="buyer_address" placeholder="Customer address">
+            </div>
+            <div class="form-group">
+                <label>Mode of Payment</label>
+                <select name="payment_mode">
+                    <option value="">— Select —</option>
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Credit">Credit</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Destination</label>
+                <input name="destination" placeholder="e.g. Thrissur">
+            </div>
+        </div>
+
+        <div class="section-title">Dispatch Details</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Vehicle Number</label>
+                <input name="vehicle_no" placeholder="e.g. KL 08 AB 1234">
+            </div>
+            <div class="form-group">
+                <label>Driver's Name</label>
+                <input name="driver_name" placeholder="Driver's full name">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:8px;">
+            Complete Sale &amp; Generate Invoice
+        </button>
+    </form>
+</div>
+
+<script>
+const INVENTORY = {{ items | tojson }};
+
+function fmt(n) {
+    return '₹' + Number(n).toLocaleString('en-IN', {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+}
+
+function recalc() {
+    const gstOn   = document.getElementById('gst-toggle').value === 'yes';
+    const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+    let subtotal = 0, gstTotal = 0;
+
+    document.querySelectorAll('.item-row').forEach(row => {
+        const sel = row.querySelector('.item-select');
+        const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+        if (!sel.value) return;
+
+        const item = INVENTORY.find(i => i.id == sel.value);
+        if (!item) return;
+
+        const price    = parseFloat(item.price);
+        const gstRate  = parseFloat(item.gst_rate);
+        const lineBase = price * qty;
+        const lineGst  = gstOn ? Math.round(lineBase * gstRate) / 100 : 0;
+
+        subtotal += lineBase;
+        gstTotal += lineGst;
+
+        row.querySelector('.line-total').textContent = fmt(lineBase + lineGst);
+    });
+
+    const total = subtotal + gstTotal - discount;
+    document.getElementById('live-subtotal').textContent = fmt(subtotal);
+    document.getElementById('live-gst').textContent      = fmt(gstTotal);
+    document.getElementById('live-discount').textContent = fmt(discount);
+    document.getElementById('live-total').textContent    = fmt(total);
+}
+
+function buildOptions(selectedId) {
+    return INVENTORY.map(i =>
+        `<option value="${i.id}" ${i.id == selectedId ? 'selected' : ''}>
+            ${i.name} — ₹${i.price} (${i.quantity} in stock)
+        </option>`
+    ).join('');
+}
+
+function addRow(selectedId, qty) {
+    const container = document.getElementById('items-container');
+    const isFirst   = container.children.length === 0;
+    const row       = document.createElement('div');
+    row.className   = 'item-row';
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 110px 120px 28px;gap:8px;align-items:end;margin-bottom:10px;';
+
+    const lbl = (text) => isFirst
+        ? `<label style="font-size:13px;font-weight:500;color:var(--text-2);display:block;margin-bottom:6px;">${text}</label>`
+        : '';
+
+    row.innerHTML = `
+        <div>
+            ${lbl('Item')}
+            <select class="item-select" name="item_id[]" required>
+                <option value="">— Select item —</option>
+                ${buildOptions(selectedId)}
+            </select>
+        </div>
+        <div>
+            ${lbl('Qty')}
+            <input type="number" class="item-qty" name="quantity[]"
+                   min="1" value="${qty || 1}" required>
+        </div>
+        <div>
+            ${lbl('Line Total')}
+            <input type="text" class="line-total" readonly value="₹0.00"
+                   style="background:var(--surface-2);color:var(--text-2);cursor:default;">
+        </div>
+        <div style="padding-bottom:1px;">
+            ${isFirst ? '<div style="height:26px;"></div>' : ''}
+            <button type="button" class="remove-row"
+                    style="width:28px;height:36px;background:var(--red-bg);color:var(--red);
+                           border:1px solid #FCA5A5;border-radius:var(--radius);cursor:pointer;
+                           font-size:16px;line-height:1;">×</button>
+        </div>
+    `;
+
+    row.querySelector('.item-select').addEventListener('change', recalc);
+    row.querySelector('.item-qty').addEventListener('input', recalc);
+    row.querySelector('.remove-row').addEventListener('click', () => {
+        if (document.querySelectorAll('.item-row').length > 1) {
+            row.remove();
+            recalc();
+        }
+    });
+
+    container.appendChild(row);
+    recalc();
+}
+
+document.getElementById('add-row-btn').addEventListener('click', () => addRow());
+document.getElementById('gst-toggle').addEventListener('change', recalc);
+document.getElementById('discount-input').addEventListener('input', recalc);
+
+addRow();
+</script>
 
 {% endblock %}

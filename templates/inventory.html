@@ -1,37 +1,184 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>Inventory</h2>
+<div class="page-header">
+    <h2>Inventory</h2>
+</div>
 
-<form method="POST" action="/inventory/add">
-    <input name="name" placeholder="Item name" required>
-    <input name="category" placeholder="Category" required>
-    <input name="hsn" placeholder="HSN Code">
-    <input name="unit" placeholder="Unit">
-    <input name="price" type="number" step="0.01" placeholder="Price">
-    <input name="gst" type="number" step="0.01" placeholder="GST %">
-    <input name="quantity" type="number" placeholder="Quantity">
-    <button type="submit">Add Item</button>
-</form>
+{# ---- Add new item ---- #}
+<div class="form-card" style="max-width:100%;margin-bottom:28px;">
+    <div class="card-title">Add New Item</div>
+    <form method="POST" action="/inventory/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Item Name *</label>
+                <input name="name" placeholder="e.g. 400W Solar Panel" required>
+            </div>
+            <div class="form-group">
+                <label>Category *</label>
+                <input name="category" placeholder="e.g. Panels" required>
+            </div>
+            <div class="form-group">
+                <label>HSN Code</label>
+                <input name="hsn" placeholder="e.g. 85414011">
+            </div>
+            <div class="form-group">
+                <label>Unit <small style="font-weight:400;color:var(--text-3)">e.g. Nos, Kg</small></label>
+                <input name="unit" placeholder="e.g. Nos">
+            </div>
+            <div class="form-group">
+                <label>Price (₹) *</label>
+                <input name="price" type="number" step="0.01" min="0" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+                <label>GST %</label>
+                <select name="gst">
+                    {% for rate in tax_rates %}
+                        <option value="{{ rate }}" {{ 'selected' if rate == 18 }}>
+                            {{ rate }}%{% if rate == 0 %} — Exempt{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Opening Quantity <small style="font-weight:400;color:var(--text-3)">how many you have now</small></label>
+                <input name="quantity" type="number" min="0" placeholder="0">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Item</button>
+    </form>
+</div>
 
-<table>
-<tr>
-    <th>Name</th>
-    <th>Category</th>
-    <th>Price</th>
-    <th>GST</th>
-    <th>Qty</th>
-</tr>
+{# ---- Stock table ---- #}
+<div class="section-title">Stock</div>
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>HSN</th>
+                <th>Unit</th>
+                <th>Price</th>
+                <th>GST %</th>
+                <th>Stock</th>
+                <th>Add Stock</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
 
-{% for item in items %}
-<tr>
-    <td>{{ item.name }}</td>
-    <td>{{ item.category }}</td>
-    <td>{{ item.price }}</td>
-    <td>{{ item.gst_rate }}</td>
-    <td>{{ item.quantity }}</td>
-</tr>
-{% endfor %}
-</table>
+            {# --- View row --- #}
+            <tr id="row-{{ item.id }}">
+                <td style="font-weight:500">{{ item.name }}</td>
+                <td><span class="badge badge-gray">{{ item.category }}</span></td>
+                <td style="color:var(--text-2);font-family:'DM Mono',monospace;font-size:12px;">{{ item.hsn_code or '—' }}</td>
+                <td style="color:var(--text-2)">{{ item.unit or '—' }}</td>
+                <td style="font-weight:500">₹{{ "{:,.2f}".format(item.price) }}</td>
+                <td>{{ item.gst_rate }}%</td>
+                <td>
+                    {% if item.quantity <= 5 %}
+                        <span class="badge badge-red">{{ item.quantity }}</span>
+                    {% elif item.quantity <= 20 %}
+                        <span class="badge badge-amber">{{ item.quantity }}</span>
+                    {% else %}
+                        <span class="badge badge-green">{{ item.quantity }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form method="POST" action="/inventory/restock/{{ item.id }}"
+                          style="display:flex;gap:6px;align-items:center;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="number" name="add_qty" min="1" placeholder="Qty"
+                               style="width:70px;padding:5px 8px;font-size:13px;">
+                        <button type="submit" class="btn btn-secondary btn-sm">+ Add</button>
+                    </form>
+                </td>
+                <td style="white-space:nowrap;">
+                    <button onclick="toggleEdit({{ item.id }})"
+                            class="btn btn-secondary btn-sm">Edit</button>
+                    <form method="POST" action="/inventory/delete/{{ item.id }}" style="display:inline"
+                          onsubmit="return confirm('Remove \'{{ item.name }}\' from inventory?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+
+            {# --- Edit row (hidden by default) --- #}
+            <tr id="edit-{{ item.id }}" style="display:none;background:var(--sun-light);">
+                <td colspan="9" style="padding:16px;">
+                    <form method="POST" action="/inventory/edit/{{ item.id }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end;">
+                            <div>
+                                <label style="font-size:12px;">Name *</label>
+                                <input name="name" value="{{ item.name }}" required>
+                            </div>
+                            <div>
+                                <label style="font-size:12px;">Category *</label>
+                                <input name="category" value="{{ item.category }}" required>
+                            </div>
+                            <div>
+                                <label style="font-size:12px;">HSN Code</label>
+                                <input name="hsn" value="{{ item.hsn_code or '' }}">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;">Unit</label>
+                                <input name="unit" value="{{ item.unit or '' }}">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;">Price (₹) *</label>
+                                <input name="price" type="number" step="0.01" min="0"
+                                       value="{{ item.price }}" required>
+                            </div>
+                            <div>
+                                <label style="font-size:12px;">GST %</label>
+                                <select name="gst">
+                                    {% for rate in tax_rates %}
+                                        <option value="{{ rate }}"
+                                            {{ 'selected' if rate == item.gst_rate|float }}>
+                                            {{ rate }}%
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:12px;">Stock</label>
+                                <input name="quantity" type="number" min="0"
+                                       value="{{ item.quantity }}">
+                            </div>
+                            <div style="display:flex;gap:8px;padding-top:18px;">
+                                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                <button type="button" onclick="toggleEdit({{ item.id }})"
+                                        class="btn btn-secondary btn-sm">Cancel</button>
+                            </div>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+
+            {% else %}
+            <tr>
+                <td colspan="9" style="text-align:center;color:var(--text-3);padding:32px;">
+                    No items in inventory yet.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function toggleEdit(id) {
+    const view = document.getElementById('row-' + id);
+    const edit = document.getElementById('edit-' + id);
+    const hidden = edit.style.display === 'none';
+    edit.style.display = hidden ? 'table-row' : 'none';
+    view.style.opacity  = hidden ? '0.4' : '1';
+}
+</script>
 
 {% endblock %}
